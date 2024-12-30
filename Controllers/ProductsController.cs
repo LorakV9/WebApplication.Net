@@ -26,13 +26,17 @@ namespace WebApplication1.Controllers
         [HttpPost]
         public async Task<ActionResult<Product>> AddProduct(Product product)
         {
-            // Dodajemy produkt do bazy danych
+            if (product == null)
+            {
+                return BadRequest();
+            }
+
+            // Dodaj produkt do bazy danych
             _context.Products.Add(product);
 
-            // Zapisujemy zmiany w bazie
+            // Zatwierdź zmiany w bazie danych
             await _context.SaveChangesAsync();
 
-            // Zwracamy odpowiedź z utworzonym produktem
             return CreatedAtAction(nameof(GetProduct), new { id = product.productid }, product);
         }
 
