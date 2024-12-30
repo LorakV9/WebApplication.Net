@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using WebApplication1.Data;
 
@@ -10,9 +11,11 @@ using WebApplication1.Data;
 namespace WebApplication1.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20241230142646_CreateOrderTable")]
+    partial class CreateOrderTable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -54,28 +57,20 @@ namespace WebApplication1.Migrations
                         .HasColumnType("int");
 
                     b.Property<bool>("Approved")
-                        .HasColumnType("tinyint(1)")
-                        .HasColumnName("zatwierdzone");
-
-                    b.Property<string>("CodeApplied")
-                        .HasColumnType("longtext");
+                        .HasColumnType("tinyint(1)");
 
                     b.Property<DateTime>("Date")
-                        .HasColumnType("datetime(6)")
-                        .HasColumnName("data");
+                        .HasColumnType("datetime(6)");
 
                     b.Property<string>("Description")
                         .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("opis");
+                        .HasColumnType("longtext");
 
                     b.Property<double>("TotalPrice")
-                        .HasColumnType("double")
-                        .HasColumnName("cena");
+                        .HasColumnType("double");
 
                     b.Property<int>("UserId")
-                        .HasColumnType("int")
-                        .HasColumnName("uzytkownik_id");
+                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
@@ -116,26 +111,6 @@ namespace WebApplication1.Migrations
                     b.HasKey("productid");
 
                     b.ToTable("Products");
-                });
-
-            modelBuilder.Entity("WebApplication1.Models.Promotion", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    b.Property<string>("Code")
-                        .IsRequired()
-                        .HasColumnType("longtext")
-                        .HasColumnName("kod");
-
-                    b.Property<int>("Discount")
-                        .HasColumnType("int")
-                        .HasColumnName("znizka");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("promocje");
                 });
 
             modelBuilder.Entity("WebApplication1.Models.User", b =>
