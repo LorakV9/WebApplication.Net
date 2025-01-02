@@ -9,26 +9,33 @@ const Login = ({ onLoginSuccess }) => {
     const navigate = useNavigate(); // Hook do nawigacji
 
     const handleLogin = async (e) => {
-        e.preventDefault();
-
-        try {
-            const response = await axios.post('http://localhost:5126/api/users/login', {
-                Email: email,
-                Password: password
-            });
-
-            console.log(response.data); // Sprawdź odpowiedź z serwera
-            
-            // Przypisanie userId do localStorage po zalogowaniu
-            localStorage.setItem('userId', response.data.id);
-
-            alert('Logowanie zakończone pomyślnie!');
-            onLoginSuccess(); // Ustawienie stanu logowania
-            navigate('/'); // Przekierowanie na stronę główną (Sklep)
-        } catch (err) {
-            setError(err.response ? err.response.data : 'Błąd połączenia z serwerem');
+      e.preventDefault();
+    
+      try {
+        const response = await axios.post('http://localhost:5126/api/users/login', {
+          Email: email,
+          Password: password,
+        });
+    
+        console.log('Odpowiedź z serwera logowania:', response.data);
+    
+        if (response.data.id) {
+          // Zapisz userId i inne dane użytkownika w localStorage
+          localStorage.setItem('userId', response.data.id);
+          localStorage.setItem('userName', response.data.name); // Zakładając, że response zawiera "name"
+          console.log('userId i userName zapisano w localStorage:', response.data.id, response.data.name);
+    
+          alert('Logowanie zakończone pomyślnie!');
+          onLoginSuccess(); // Ustawienie stanu logowania
+          navigate('/'); // Przekierowanie na stronę główną (Sklep)
+        } else {
+          alert('Błąd logowania: Brak ID użytkownika');
         }
+      } catch (err) {
+        setError(err.response ? err.response.data : 'Błąd połączenia z serwerem');
+      }
     };
+  
 
     return (
         <div>

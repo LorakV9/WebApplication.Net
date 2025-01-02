@@ -99,7 +99,8 @@ namespace WebApplication1.Controllers
                 return Unauthorized("Niepoprawne hasło.");
             }
 
-            return Ok(new { message = "Zalogowano pomyślnie!" }); // Użytkownik jest zalogowany
+            // Jeśli użytkownik został zweryfikowany, zwróć jego dane (w tym ID)
+            return Ok(new { id = user.id, message = "Zalogowano pomyślnie!" }); // Zwrócenie ID użytkownika
         }
     }
 

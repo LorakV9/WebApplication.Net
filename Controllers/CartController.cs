@@ -20,13 +20,22 @@ namespace WebApplication1.Controllers
         [HttpGet("cart/{userId}")]
         public async Task<IActionResult> GetCartItems(int userId)
         {
+            Console.WriteLine($"Pobieranie koszyka dla użytkownika o ID: {userId}");
+
             var cartItems = await _context.Koszyk
-                .Where(c => c.UserId == userId)  // Jeśli w modelu masz UserId
+                .Where(c => c.UserId == userId)
                 .ToListAsync();
 
             if (cartItems == null || !cartItems.Any())
             {
+                Console.WriteLine("Koszyk jest pusty."); // Log pustego koszyka
                 return NotFound("Koszyk jest pusty.");
+            }
+
+            Console.WriteLine($"Znaleziono {cartItems.Count} elementów w koszyku:");
+            foreach (var item in cartItems)
+            {
+                Console.WriteLine($"- {item.Name}, Ilość: {item.Amount}, Cena: {item.Price}");
             }
 
             return Ok(cartItems);

@@ -2,159 +2,192 @@ import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 const Sklep = () => {
-    const [products, setProducts] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState('');
-    const [userId, setUserId] = useState(null);
-    const [cartItems, setCartItems] = useState([]); // Koszyk
-    const [totalPrice, setTotalPrice] = useState(0); // Całkowita cena produktów w koszyku
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [userId, setUserId] = useState(null);
+  const [userName, setUserName] = useState('');
+  const [cartItems, setCartItems] = useState([]);
+  const [totalPrice, setTotalPrice] = useState(0);
+  const [isAdding, setIsAdding] = useState(false); // Dodany stan dla loadera
 
-    // Pobieranie produktów
-    const fetchProducts = useCallback(async () => {
-        let url = 'http://localhost:5126/api/products'; // Domyślnie pobieramy wszystkie produkty
+  // Pobieranie produktów
+  const fetchProducts = useCallback(async () => {
+    let url = 'http://localhost:5126/api/products';
 
-        if (selectedCategory) {
-            url = `http://localhost:5126/api/products/category/${selectedCategory}`; // Produkty po wybranej kategorii
-        }
+    if (selectedCategory) {
+      url = `http://localhost:5126/api/products/category/${selectedCategory}`;
+    }
 
-        try {
-            const response = await axios.get(url);
-            setProducts(response.data); // Ustawiamy produkty
-        } catch (error) {
-            console.error('Błąd podczas pobierania produktów:', error);
-        }
-    }, [selectedCategory]);  // Zależność: zmiana kategorii
+    try {
+      const response = await axios.get(url);
+      setProducts(response.data);
+    } catch (error) {
+      console.error('Błąd podczas pobierania produktów:', error);
+    }
+  }, [selectedCategory]);
 
-    // Pobieranie kategorii
-    const fetchCategories = useCallback(async () => {
-        try {
-            const response = await axios.get('http://localhost:5126/api/categories');
-            setCategories(response.data); // Ustawiamy kategorie
-        } catch (error) {
-            console.error('Błąd podczas pobierania kategorii:', error);
-        }
-    }, []);  // Tylko raz, przy pierwszym renderze
+  // Pobieranie kategorii
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await axios.get('http://localhost:5126/api/categories');
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Błąd podczas pobierania kategorii:', error);
+    }
+  }, []);
 
-    // Pobieranie produktów w koszyku
-    const fetchCartItems = useCallback(async () => {
-      if (!userId) return;
-  
-      try {
-          const response = await axios.get(`http://localhost:5126/api/cart/${userId}`);
-          console.log('Odpowiedź z serwera (koszyk):', response.data); // Logujemy odpowiedź z serwera
-          setCartItems(response.data); // Ustawiamy produkty w koszyku
-          calculateTotalPrice(response.data); // Obliczanie całkowitej ceny
-      } catch (error) {
-          console.error('Błąd podczas pobierania produktów w koszyku:', error);
+  // Pobieranie produktów w koszyku
+  const fetchCartItems = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const response = await axios.get(`http://localhost:5126/api/cart/cart/${userId}`);
+      if (Array.isArray(response.data)) {
+        const mappedCartItems = response.data.map((item) => ({
+          id: item.id,
+          name: item.name,
+          amount: item.amount,
+          price: item.price,
+        }));
+        setCartItems(mappedCartItems);
+        calculateTotalPrice(mappedCartItems);
+      } else {
+        setCartItems([]);
       }
-  }, [userId]);  // Zależność: zmiana userId  // Zależność: zmiana userId
+    } catch (error) {
+      console.error('Błąd podczas pobierania produktów w koszyku:', error);
+    }
+  }, [userId]);
 
-    // Dodawanie produktu do koszyka
-    const addToCart = async (productId) => {
-        if (!userId) {
-            alert('Musisz być zalogowany, aby dodać produkt do koszyka!');
-            return;
-        }
+  // Obliczanie całkowitej ceny produktów w koszyku
+  const calculateTotalPrice = (cartItems) => {
+    const total = cartItems.reduce((sum, item) => sum + item.price * item.amount, 0);
+    setTotalPrice(total);
+  };
 
-        const cartItem = {
-            ProductId: productId,
-            UserId: userId,
-            Amount: 1, // Zakładamy, że dodajemy 1 sztukę produktu
-        };
-
-        try {
-            await axios.post('http://localhost:5126/api/cart', cartItem);
-            alert('Produkt został dodany do koszyka!');
-            fetchCartItems(); // Odświeżamy koszyk po dodaniu
-        } catch (error) {
-            console.error('Błąd podczas dodawania produktu do koszyka:', error);
-        }
+  // Dodawanie produktu do koszyka
+  const addToCart = async (productId, productName, productPrice) => {
+    // Sprawdzamy, czy użytkownik jest zalogowany
+    if (!userId) {
+      alert('Musisz być zalogowany, aby dodać produkt do koszyka!');
+      return;
+    }
+  
+    // Tworzymy obiekt cartItem z poprawnymi danymi
+    const cartItem = {
+      ProductId: productId, 
+      Name: productName,   
+      Price: productPrice,   // Id produktu
+        // Id zalogowanego użytkownika
+      Amount: 1,   
+      UserId: parseInt(userId, 10),             // Ilość dodawanego produktu (na razie 1)
+            // Nazwa produktu
+           // Cena produktu
     };
-
-    // Obliczanie całkowitej ceny produktów w koszyku
-    const calculateTotalPrice = (cartItems) => {
-        let total = 0;
-        cartItems.forEach(item => {
-            total += item.price * item.amount; // Zakładamy, że mamy cenę i ilość w obiekcie cartItem
-        });
-        setTotalPrice(total);
-    };
-
-    useEffect(() => {
-        fetchCategories(); // Pobieranie kategorii przy pierwszym renderze
-    }, [fetchCategories]);
-
-    useEffect(() => {
-        fetchProducts(); // Pobieranie produktów przy zmianie kategorii
-    }, [fetchProducts]);
-
-    useEffect(() => {
-      // Sprawdzamy, czy w localStorage mamy zapisany userId
-      const storedUserId = localStorage.getItem('userId');
-      if (storedUserId) {
-          setUserId(storedUserId); // Ustawiamy ID użytkownika
-          fetchCartItems(); // Pobieramy produkty w koszyku po zalogowaniu
+  
+    try {
+      // Wysłanie danych do backendu
+      const response = await axios.post('http://localhost:5126/api/cart', cartItem, {
+        headers: { 'Content-Type': 'application/json' },
+      });
+  
+      console.log('Odpowiedź z serwera (dodanie do koszyka):', response.data);
+      alert('Produkt został dodany do koszyka!');
+      
+      // Odświeżamy koszyk po dodaniu produktu
+      fetchCartItems(); 
+    } catch (error) {
+      console.error('Błąd podczas dodawania produktu do koszyka:', error);
+      if (error.response) {
+        console.error('Szczegóły odpowiedzi błędu:', error.response.data);
       }
-  }, []);  // Uruchomimy tylko raz, po pierwszym załadowaniu komponentu
+      alert('Nie udało się dodać produktu do koszyka.');
+    }
+  };
+  
+  
   
 
-    return (
-        <div style={{ display: 'flex' }}>
-            {/* Główna część sklepu */}
-            <div style={{ flex: 1 }}>
-                <h2>Produkty</h2>
-                {/* Wybór kategorii */}
-                <select
-                    value={selectedCategory}
-                    onChange={(e) => setSelectedCategory(e.target.value)}
-                >
-                    <option value="">Wybierz kategorię</option>
-                    {categories.map((category) => (
-                        <option key={category.id} value={category.id}>
-                            {category.name}
-                        </option>
-                    ))}
-                </select>
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
 
-                {/* Produkty */}
-                <div>
-                    {products.length === 0 ? (
-                        <p>Brak produktów w tej kategorii.</p>
-                    ) : (
-                        <ul>
-                            {products.map((product) => (
-                                <li key={product.id}>
-                                    <h3>{product.name}</h3>
-                                    <p>{product.price} PLN</p>
-                                    <button onClick={() => addToCart(product.id)}>
-                                        Dodaj do koszyka
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </div>
-            </div>
+  useEffect(() => {
+    fetchProducts();
+  }, [fetchProducts]);
 
-            {/* Koszyk po prawej stronie */}
-            <div style={{ width: '300px', marginLeft: '20px', border: '1px solid #ddd', padding: '10px' }}>
-                <h3>Koszyk</h3>
-                <ul>
-                    {cartItems.length === 0 ? (
-                        <p>Koszyk jest pusty.</p>
-                    ) : (
-                        cartItems.map(item => (
-                            <li key={item.id}>
-                                {item.name} - {item.amount} szt. - {item.price} PLN
-                            </li>
-                        ))
-                    )}
-                </ul>
-                <hr />
-                <p><strong>Łączna cena: {totalPrice} PLN</strong></p>
-            </div>
+  useEffect(() => {
+    const storedUserId = localStorage.getItem('userId');
+    const storedUserName = localStorage.getItem('userName');
+    if (storedUserId) {
+      setUserId(storedUserId);
+      setUserName(storedUserName);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (userId) {
+      fetchCartItems();
+    }
+  }, [userId, fetchCartItems]);
+
+  return (
+    <div style={{ display: 'flex' }}>
+      <div style={{ flex: 1 }}>
+        <h2>Produkty</h2>
+        {userId && userName && (
+          <div>
+            <h3>Witaj, {userName}!</h3>
+            <p>ID użytkownika: {userId}</p>
+          </div>
+        )}
+        <select value={selectedCategory} onChange={(e) => setSelectedCategory(e.target.value)}>
+          <option value="">Wybierz kategorię</option>
+          {categories.map((category) => (
+            <option key={category.id} value={category.id}>
+              {category.name}
+            </option>
+          ))}
+        </select>
+
+        <div>
+          {products.length === 0 ? (
+            <p>Brak produktów w tej kategorii.</p>
+          ) : (
+            <ul>
+              {products.map((product) => (
+                <li key={product.id}>
+                  <h3>{product.name}</h3>
+                  <p>{product.price} PLN</p>
+                  <button onClick={() => addToCart(product.id, product.name, product.price)} disabled={isAdding}>
+                    {isAdding ? 'Dodawanie...' : 'Dodaj do koszyka'}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-    );
+      </div>
+
+      <div style={{ width: '300px', marginLeft: '20px', border: '1px solid #ddd', padding: '10px' }}>
+        <h3>Koszyk</h3>
+        <ul>
+          {cartItems.length === 0 ? (
+            <p>Koszyk jest pusty.</p>
+          ) : (
+            cartItems.map((item) => (
+              <li key={item.id}>
+                {item.name} - {item.amount} szt. - {item.price.toFixed(2)} PLN
+              </li>
+            ))
+          )}
+        </ul>
+        <hr />
+        <p><strong>Łączna cena: {totalPrice.toFixed(2)} PLN</strong></p>
+      </div>
+    </div>
+  );
 };
 
 export default Sklep;
