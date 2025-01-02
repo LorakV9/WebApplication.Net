@@ -30,14 +30,26 @@ namespace WebApplication1.Controllers
         {
             if (user == null)
             {
-                return BadRequest();
+                return BadRequest("Dane użytkownika są niekompletne.");
             }
+
+            // Sprawdzanie, czy użytkownik o podanym emailu już istnieje
+            var existingUser = await _context.Uzytkownik.FirstOrDefaultAsync(u => u.email == user.email);
+            if (existingUser != null)
+            {
+                return BadRequest("Użytkownik o tym emailu już istnieje.");
+            }
+
+            // Logowanie danych użytkownika
+            Console.WriteLine($"Dodawanie użytkownika: {user.imie} {user.nazwisko}, {user.email}");
 
             _context.Uzytkownik.Add(user);
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetUser), new { id = user.id }, user); // Zwraca dodanego użytkownika
         }
+
+
 
         // GET: api/users/{id}
         [HttpGet("{id}")]

@@ -1,4 +1,5 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using WebApplication1.Data;
 using WebApplication1.Models;
 
@@ -19,6 +20,14 @@ namespace WebApplication1.Controllers
         public IActionResult GetProducts()
         {
             var products = _context.Products.ToList();
+            return Ok(products);
+        }
+
+        // GET: api/products/category/{id}
+        [HttpGet("category/{id}")]
+        public async Task<ActionResult<IEnumerable<Product>>> GetProductsByCategory(int id)
+        {
+            var products = await _context.Products.Where(p => p.categoryid == id).ToListAsync();
             return Ok(products);
         }
 
@@ -53,6 +62,8 @@ namespace WebApplication1.Controllers
 
             return product;
         }
+
+
 
         // DELETE: api/products/{id}
         [HttpDelete("{id}")]
