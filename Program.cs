@@ -1,16 +1,72 @@
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
+using System.Text;
 using WebApplication1.Data;
+using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+// Dodaj JWT Authentication
+var jwtSettings = builder.Configuration.GetSection("Jwt");
+var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]);
+
+
+builder.Services.AddSwaggerGen(c =>
+{
+    c.SwaggerDoc("v1", new OpenApiInfo { Title = "API", Version = "v1" });
+
+    // Konfiguracja JWT
+    c.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
+    {
+        Name = "Authorization",
+        Type = SecuritySchemeType.Http,
+        Scheme = "Bearer",
+        BearerFormat = "JWT",
+        In = ParameterLocation.Header,
+        Description = "Wpisz 'Bearer' i spacjƒô, a nastƒôpnie token JWT.\n\nPrzyk≈Çad: 'Bearer Tw√≥jTokenJWT'"
+    });
+
+    // Dodaj wymaganie zabezpiecze≈Ñ
+    c.AddSecurityRequirement(new OpenApiSecurityRequirement
+    {
+        {
+            new OpenApiSecurityScheme
+            {
+                Reference = new OpenApiReference
+                {
+                    Type = ReferenceType.SecurityScheme,
+                    Id = "Bearer"
+                }
+            },
+            Array.Empty<string>()
+        }
+    });
+});
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]))
+        };
+    });
 
 // Konfiguracja CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAllOrigins", policy =>
     {
-        policy.AllowAnyOrigin()  // Zezwalaj na po≥πczenia z dowolnego ürÛd≥a
+        policy.AllowAnyOrigin()  // Zezwalaj na poÔøΩÔøΩczenia z dowolnego ÔøΩrÔøΩdÔøΩa
               .AllowAnyMethod()  // Zezwalaj na dowolne metody (GET, POST, PUT, DELETE)
-              .AllowAnyHeader(); // Zezwalaj na dowolne nag≥Ûwki
+              .AllowAnyHeader(); // Zezwalaj na dowolne nagÔøΩÔøΩwki
     });
 });
 
@@ -25,17 +81,18 @@ builder.Services.AddControllers();
 
 var app = builder.Build();
 
-// W≥πczenie CORS
-app.UseCors("AllowAllOrigins");  // Uøywamy wczeúniej zdefiniowanej polityki CORS
+// WÔøΩÔøΩczenie CORS
+app.UseCors("AllowAllOrigins");  // UÔøΩywamy wczeÔøΩniej zdefiniowanej polityki CORS
 
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
-    app.UseSwaggerUI();  // Interfejs uøytkownika Swagger
+    app.UseSwaggerUI();  // Interfejs uÔøΩytkownika Swagger
 }
-
+app.UseStaticFiles(); // Obs≈Çuga plik√≥w statycznych
 app.UseRouting();
-
+app.UseAuthentication(); // Dodaj uwierzytelnianie
+app.UseAuthorization();  // Dodaj autoryzacjƒô
 app.UseEndpoints(endpoints =>
 {
     endpoints.MapControllers();

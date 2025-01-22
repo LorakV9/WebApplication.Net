@@ -2,11 +2,13 @@
 using WebApplication1.Models;
 using WebApplication1.Data;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
 
 namespace WebApplication1.Controllers
 {
     [ApiController]
     [Route("api/promotions")]
+    [Authorize]
     public class PromotionController : ControllerBase
     {
         private readonly AppDbContext _context;
