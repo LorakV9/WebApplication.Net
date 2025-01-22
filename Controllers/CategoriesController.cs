@@ -63,20 +63,33 @@ namespace WebApplication1.Controllers
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
+            // Znajdź kategorię w bazie danych
+            var category = await _context.Categories
+                                          .Include(c => c.Products)  // Załaduj powiązane produkty
+                                          .FirstOrDefaultAsync(c => c.CategoryId == id);
+
             if (category == null)
             {
-                return NotFound();
+                return NotFound(); // Jeśli kategoria nie istnieje, zwróć 404
             }
 
+            // Usuń powiązane produkty
+            if (category.Products != null)
+            {
+                _context.Products.RemoveRange(category.Products);  // Usuwa wszystkie produkty przypisane do kategorii
+            }
+
+            // Usuń kategorię
             _context.Categories.Remove(category);
+
+            // Zapisz zmiany w bazie danych
             await _context.SaveChangesAsync();
 
-            return NoContent(); // Zwraca 204 No Content po usunięciu kategorii
+            return NoContent(); // Zwraca 204 No Content po usunięciu kategorii i produktów
         }
 
-        
 
-        
+
+
     }
 }
