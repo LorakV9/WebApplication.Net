@@ -22,8 +22,12 @@ namespace WebApplication1.Controllers
         [HttpGet]
         public async Task<ActionResult<IEnumerable<Category>>> GetCategories()
         {
-            var categories = await _context.Categories.ToListAsync();
-            return Ok(categories); // Zwraca listę kategorii
+            // Użycie Include do załadowania produktów razem z kategoriami
+            var categories = await _context.Categories
+                                           .Include(c => c.Products)  // Załaduj powiązane produkty
+                                           .ToListAsync();
+
+            return Ok(categories); // Zwraca listę kategorii z produktami
         }
 
         // POST: api/categories
@@ -70,5 +74,9 @@ namespace WebApplication1.Controllers
 
             return NoContent(); // Zwraca 204 No Content po usunięciu kategorii
         }
+
+        
+
+        
     }
 }
