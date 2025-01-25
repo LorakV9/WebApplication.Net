@@ -45,12 +45,30 @@ namespace WebApplication1.Controllers
 
         // POST: api/cart
         [HttpPost]
-        public async Task<ActionResult<CartItem>> AddToCart([FromBody] CartItem cartItem)
+        public async Task<ActionResult<CartItem>> AddToCart([FromBody] CartItem cartItemInput)
         {
-            if (cartItem == null)
+            if (cartItemInput == null || cartItemInput.ProductId <= 0 || cartItemInput.Amount <= 0 || cartItemInput.UserId <= 0)
             {
-                return BadRequest("Błąd danych.");
+                return BadRequest("Invalid data provided.");
             }
+
+            // Pobierz produkt z tabeli Product na podstawie ProductId
+            var product = await _context.Products.FirstOrDefaultAsync(p => p.productid == cartItemInput.ProductId);
+
+            if (product == null)
+            {
+                return NotFound("Product not found.");
+            }
+
+            // Uzupełnij brakujące dane w CartItem
+            var cartItem = new CartItem
+            {
+                ProductId = cartItemInput.ProductId,
+                UserId = cartItemInput.UserId,
+                Amount = cartItemInput.Amount,
+                Name = product.name,
+                Price = (decimal)product.price
+            };
 
             // Sprawdzamy, czy produkt już istnieje w koszyku tego użytkownika
             var existingCartItem = await _context.Koszyk
