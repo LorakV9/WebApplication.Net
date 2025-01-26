@@ -49,14 +49,17 @@ namespace WebApplication1.Controllers
         [HttpGet("{id}")]
         public async Task<ActionResult<Category>> GetCategory(int id)
         {
-            var category = await _context.Categories.FindAsync(id);
+            // Pobierz kategorię wraz z jej produktami na podstawie id
+            var category = await _context.Categories
+                                         .Include(c => c.Products)  // Załaduj powiązane produkty
+                                         .FirstOrDefaultAsync(c => c.CategoryId == id); // Filtruj po id
 
             if (category == null)
             {
-                return NotFound();
+                return NotFound(); // Jeśli kategoria nie istnieje, zwróć 404
             }
 
-            return Ok(category); // Zwraca kategorię o podanym id
+            return Ok(category); // Zwróć znalezioną kategorię wraz z produktami
         }
 
         // DELETE: api/categories/{id}
@@ -88,7 +91,12 @@ namespace WebApplication1.Controllers
             return NoContent(); // Zwraca 204 No Content po usunięciu kategorii i produktów
         }
 
-
+        [HttpGet("categories-with-products")]
+        public async Task<ActionResult<IEnumerable<Category>>> GetCategoriesWithProducts()
+        {
+            var categoriesWithProducts = await _context.GetCategoriesWithProductsAsync();
+            return Ok(categoriesWithProducts);
+        }
 
 
     }
