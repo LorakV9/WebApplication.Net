@@ -25,6 +25,94 @@ namespace WebApplication1.Controllers
             _configuration = configuration;
         }
 
+        // GET: api/users/with-cart
+        [HttpGet("with-cart")]
+        public async Task<ActionResult<List<User>>> GetUsersWithCartItems()
+        {
+            try
+            {
+                // Wywołanie metody, która pobiera użytkowników z ich koszykami
+                var users = await GetUsersWithCartItemsAsync();
+
+                if (users == null || users.Count == 0)
+                {
+                    return NotFound("No users found with cart items.");
+                }
+
+                return Ok(users); // Zwraca dane użytkowników z ich elementami koszyka
+            }
+            catch (System.Exception ex)
+            {
+                // Obsługa błędów
+                return StatusCode(500, $"Internal server error: {ex.Message}");
+            }
+        }
+
+        // Zdefiniuj metodę GetUsersWithCartItemsAsync w tym kontrolerze
+        private async Task<List<User>> GetUsersWithCartItemsAsync()
+        {
+            var usersWithCartItems = new List<User>();
+
+            var connection = _context.Database.GetDbConnection(); // Użyj kontekstu bazy danych
+            if (connection.State != System.Data.ConnectionState.Open)
+            {
+                await connection.OpenAsync();
+            }
+
+            var command = connection.CreateCommand();
+            command.CommandText = "CALL GetUserWithCartItems();"; // Wywołanie procedury składowanej
+            command.CommandType = System.Data.CommandType.Text;
+
+            var reader = await command.ExecuteReaderAsync();
+
+            // Parsowanie wyników do listy użytkowników i elementów koszyka
+            while (await reader.ReadAsync())
+            {
+                var userId = reader.GetInt32(reader.GetOrdinal("UserId"));
+                var firstName = reader.GetString(reader.GetOrdinal("FirstName"));
+                var lastName = reader.GetString(reader.GetOrdinal("LastName"));
+                var email = reader.GetString(reader.GetOrdinal("Email"));
+                var cartItemId = reader.IsDBNull(reader.GetOrdinal("CartItemId")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("CartItemId"));
+                var productId = reader.IsDBNull(reader.GetOrdinal("ProductId")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("ProductId"));
+                var productName = reader.IsDBNull(reader.GetOrdinal("ProductName")) ? null : reader.GetString(reader.GetOrdinal("ProductName"));
+                var price = reader.IsDBNull(reader.GetOrdinal("Price")) ? (decimal?)null : reader.GetDecimal(reader.GetOrdinal("Price"));
+                var amount = reader.IsDBNull(reader.GetOrdinal("Amount")) ? (int?)null : reader.GetInt32(reader.GetOrdinal("Amount"));
+
+                // Znajdź użytkownika lub utwórz nowego, jeśli jeszcze go nie ma
+                var user = usersWithCartItems.FirstOrDefault(u => u.id == userId);
+                if (user == null)
+                {
+                    user = new User
+                    {
+                        id = userId,
+                        imie = firstName,
+                        nazwisko = lastName,
+                        email = email,
+                        CartItems = new List<CartItem>() // Dodano listę CartItems
+                    };
+                    usersWithCartItems.Add(user);
+                }
+
+                // Dodaj element koszyka do użytkownika, jeśli istnieje
+                if (cartItemId.HasValue)
+                {
+                    user.CartItems.Add(new CartItem
+                    {
+                        CartItemId = cartItemId.Value,
+                        ProductId = productId ?? 0,
+                        Name = productName,
+                        Price = price ?? 0,
+                        Amount = amount ?? 0,
+                        UserId = userId
+                    });
+                }
+            }
+
+            return usersWithCartItems;
+        }
+
+
+
 
         // GET: api/users
         [HttpGet]
@@ -36,30 +124,75 @@ namespace WebApplication1.Controllers
 
         // POST: api/users
         [HttpPost]
-        public async Task<ActionResult<User>> AddUser([FromBody] User user)
+        public async Task<ActionResult<User>> CreateUserWithCart([FromBody] User userInput)
         {
-            if (user == null)
+            if (userInput == null || userInput.CartItems == null || userInput.CartItems.Count == 0)
             {
-                return BadRequest("Dane użytkownika są niekompletne.");
+                return BadRequest("Invalid data provided. User and CartItems are required.");
             }
 
-            var existingUser = await _context.Uzytkownik.FirstOrDefaultAsync(u => u.email == user.email);
-            if (existingUser != null)
+            // Tworzymy nowego użytkownika
+            var newUser = new User
             {
-                return BadRequest("Użytkownik o tym emailu już istnieje.");
-            }
+                imie = userInput.imie,
+                nazwisko = userInput.nazwisko,
+                email = userInput.email,
+                haslo = userInput.haslo
+            };
 
-            _context.Uzytkownik.Add(user);
+            // Dodajemy użytkownika do bazy danych
+            _context.Uzytkownik.Add(newUser);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetUser), new { id = user.id }, user);
+            // Dodajemy produkty do koszyka nowego użytkownika
+            foreach (var cartItemInput in userInput.CartItems)
+            {
+                var product = await _context.Products.FirstOrDefaultAsync(p => p.productid == cartItemInput.ProductId);
+
+                if (product == null)
+                {
+                    return NotFound($"Product with ID {cartItemInput.ProductId} not found.");
+                }
+
+                // Tworzymy nowy CartItem
+                var cartItem = new CartItem
+                {
+                    ProductId = cartItemInput.ProductId,
+                    UserId = newUser.id,
+                    Amount = cartItemInput.Amount,
+                    Name = product.name,
+                    Price = (decimal)product.price
+                };
+
+                // Sprawdzamy, czy produkt już istnieje w koszyku tego użytkownika
+                var existingCartItem = await _context.Koszyk
+                    .FirstOrDefaultAsync(c => c.ProductId == cartItem.ProductId && c.UserId == cartItem.UserId);
+
+                if (existingCartItem != null)
+                {
+                    // Jeśli produkt już jest w koszyku, zwiększamy ilość
+                    existingCartItem.Amount += cartItem.Amount;
+                    _context.Koszyk.Update(existingCartItem);
+                }
+                else
+                {
+                    // Jeśli to nowy produkt, dodajemy go do koszyka
+                    _context.Koszyk.Add(cartItem);
+                }
+            }
+
+            // Zapisujemy zmiany w bazie
+            await _context.SaveChangesAsync();
+
+            // Zwracamy odpowiedź z nowo utworzonym użytkownikiem
+            return CreatedAtAction(nameof(GetUserById), new { id = newUser.id }, newUser);
         }
 
         // GET: api/users/{id}
         [HttpGet("{id}")]
-        public async Task<ActionResult<User>> GetUser(int id)
+        public async Task<ActionResult<User>> GetUserById(int id)
         {
-            var user = await _context.Uzytkownik.FindAsync(id);
+            var user = await _context.Uzytkownik.Include(u => u.CartItems).FirstOrDefaultAsync(u => u.id == id);
 
             if (user == null)
             {
@@ -68,6 +201,8 @@ namespace WebApplication1.Controllers
 
             return Ok(user);
         }
+
+        
 
         // DELETE: api/users/{id}
         [HttpDelete("{id}")]

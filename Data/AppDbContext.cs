@@ -67,6 +67,7 @@ namespace WebApplication1.Data
         }
         public DbSet<User> Uzytkownik { get; set; } // Reprezentuje tabelę Users
 
+
         public DbSet<CartItem> Koszyk { get; set; }
 
         public DbSet<Order> zamowienie { get; set; }
